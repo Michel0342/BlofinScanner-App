@@ -26,7 +26,6 @@ def style_negative(val):
 
 @st.cache_data(ttl=300)
 def get_futures_symbols():
-    # ... (code om symbolen op te halen is hetzelfde gebleven) ...
     url = f"{BASE_URL}/api/v1/market/instruments"
     try:
         response = requests.get(url)
@@ -37,12 +36,11 @@ def get_futures_symbols():
         return []
 
 def get_candle_stats(symbol, bar_interval):
-    # ... (code om candles op te halen en % te berekenen is hetzelfde gebleven) ...
     url = f"{BASE_URL}/api/v1/market/candles"
     params = {
         'instId': symbol,
         'bar': bar_interval,
-        'limit': 1
+        'limit': 1 
     }
     
     try:
@@ -66,16 +64,14 @@ def get_candle_stats(symbol, bar_interval):
 # --- De App Interface ---
 
 st.title("📊 Blofin Multi-Scanner")
-st.markdown("---") # Visuele scheiding
+st.markdown("---") 
 
 # Instellingen in de zijbalk
 st.sidebar.header("Instellingen")
 limit_coins = st.sidebar.slider("Aantal munten scannen", 10, 50, 20)
 
-# Nieuw: Toon de huidige UTC tijd in de zijbalk voor context
 st.sidebar.info(f"Laatste data check: {datetime.now().strftime('%H:%M:%S')} UTC")
 
-# Vaste containers voor statusmeldingen
 status_text = st.empty()
 
 if st.sidebar.button("Start Scan", use_container_width=True):
@@ -115,12 +111,15 @@ if st.sidebar.button("Start Scan", use_container_width=True):
     status_text.success(f"Scan voltooid! {limit_coins} munten gecheckt in {scan_time} seconden.")
     
     
-    # --- BELANGRIJK: DE STYLING ---
-    # We gebruiken de Panda's .style methode om de kleurfunctie toe te passen
+    # --- BELANGRIJKE AANPASSING HIERONDER: GEEN VASTE HOOGTE ---
+    
+    # We gebruiken st.write(df.to_html(...)) om de interne scrollbar te omzeilen
+    # Echter, de meest moderne en eenvoudigste manier met Streamlit is om de max. hoogte te overschrijven.
     
     st.dataframe(
         df.style.applymap(style_negative, subset=["5m %", "15m %", "1u %"]),
         use_container_width=True,
+        # De 'height' parameter is weggelaten om de volle hoogte te gebruiken
         column_config={
             "Prijs ($)": st.column_config.NumberColumn(format="$ %.4f"),
             "5m %": st.column_config.NumberColumn(format="%.2f %%"),
