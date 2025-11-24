@@ -14,7 +14,7 @@ st.set_page_config(
 # Basis URL van de Blofin API
 BASE_URL = "https://openapi.blofin.com"
 
-# NIEUWE FUNCTIE: Past de achtergrondkleur van de cel aan
+# Functie om de achtergrondkleur van de cel aan te passen (Heatmap)
 def highlight_change(val):
     """Kleur cellen met een lichte achtergrond op basis van positieve/negatieve waarde."""
     if isinstance(val, (int, float)):
@@ -28,9 +28,7 @@ def highlight_change(val):
             return 'background-color: white; color: black'
     return None
 
-# --- Data Functies (Onveranderd) ---
-# De functies get_futures_symbols en get_candle_stats blijven hetzelfde 
-# omwille van de beknoptheid, maar je moet de volledige code vervangen.
+# --- Data Functies ---
 
 @st.cache_data(ttl=300)
 def get_futures_symbols():
@@ -95,6 +93,7 @@ if st.sidebar.button("Start Scan", use_container_width=True):
     start_time = time.time()
     
     for i, symbol in enumerate(symbols_to_scan):
+        # Ophalen van de lage tijdsframes: 5m, 15m, 1u
         price, change_5m = get_candle_stats(symbol, "5m")
         _, change_15m = get_candle_stats(symbol, "15m")
         _, change_1h = get_candle_stats(symbol, "1H")
@@ -119,11 +118,10 @@ if st.sidebar.button("Start Scan", use_container_width=True):
     status_text.success(f"Scan voltooid! {limit_coins} munten gecheckt in {scan_time} seconden.")
     
     
-    # --- BELANGRIJK: TOEPASSING VAN DE NIEUWE STIJL ---
+    # --- TOEPASSING VAN HEATMAP STIJL EN VOLLEDIGE HOOGTE ---
     
     st.dataframe(
-        # We gebruiken de nieuwe highlight_change functie
-        df.style.applymap(highlight_change, subset=["5m %", "15m %", "1u %"]), 
+        df.style.applymap(highlight_change, subset=["5m %", "15m %", "1u %"]),
         use_container_width=True,
         column_config={
             "Prijs ($)": st.column_config.NumberColumn(format="$ %.4f"),
