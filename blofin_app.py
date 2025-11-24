@@ -14,15 +14,23 @@ st.set_page_config(
 # Basis URL van de Blofin API
 BASE_URL = "https://openapi.blofin.com"
 
-# Functie om de styling toe te passen
-def style_negative(val):
-    """Kleur cellen rood voor negatieve waarden, groen voor positieve waarden."""
+# NIEUWE FUNCTIE: Past de achtergrondkleur van de cel aan
+def highlight_change(val):
+    """Kleur cellen met een lichte achtergrond op basis van positieve/negatieve waarde."""
     if isinstance(val, (int, float)):
-        color = 'red' if val < 0 else ('green' if val > 0 else 'white')
-        return f'color: {color}'
+        if val > 0:
+            # Groene achtergrond voor stijgers
+            return 'background-color: #e6ffe6; color: #006600' 
+        elif val < 0:
+            # Rode achtergrond voor dalers
+            return 'background-color: #ffe6e6; color: #cc0000'
+        else:
+            return 'background-color: white; color: black'
     return None
 
 # --- Data Functies (Onveranderd) ---
+# De functies get_futures_symbols en get_candle_stats blijven hetzelfde 
+# omwille van de beknoptheid, maar je moet de volledige code vervangen.
 
 @st.cache_data(ttl=300)
 def get_futures_symbols():
@@ -63,7 +71,7 @@ def get_candle_stats(symbol, bar_interval):
 
 # --- De App Interface ---
 
-st.title("📊 Blofin Multi-Scanner")
+st.title("📊 Blofin Multi-Scanner (Heatmap Stijl)")
 st.markdown("---") 
 
 # Instellingen in de zijbalk
@@ -111,15 +119,12 @@ if st.sidebar.button("Start Scan", use_container_width=True):
     status_text.success(f"Scan voltooid! {limit_coins} munten gecheckt in {scan_time} seconden.")
     
     
-    # --- BELANGRIJKE AANPASSING HIERONDER: GEEN VASTE HOOGTE ---
-    
-    # We gebruiken st.write(df.to_html(...)) om de interne scrollbar te omzeilen
-    # Echter, de meest moderne en eenvoudigste manier met Streamlit is om de max. hoogte te overschrijven.
+    # --- BELANGRIJK: TOEPASSING VAN DE NIEUWE STIJL ---
     
     st.dataframe(
-        df.style.applymap(style_negative, subset=["5m %", "15m %", "1u %"]),
+        # We gebruiken de nieuwe highlight_change functie
+        df.style.applymap(highlight_change, subset=["5m %", "15m %", "1u %"]), 
         use_container_width=True,
-        # De 'height' parameter is weggelaten om de volle hoogte te gebruiken
         column_config={
             "Prijs ($)": st.column_config.NumberColumn(format="$ %.4f"),
             "5m %": st.column_config.NumberColumn(format="%.2f %%"),
