@@ -112,4 +112,5 @@ if st.sidebar.button("Start Scan"):
     )
 
 else:
+
     st.info("Druk op 'Start Scan' in de zijbalk om te beginnen.")
