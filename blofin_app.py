@@ -6,7 +6,7 @@ from datetime import datetime
 
 # --- Configuratie & Styling ---
 st.set_page_config(
-    page_title="Blofin Multi-Timeframe Scanner",
+    page_title="Blofin USDT Futures Scanner",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -32,11 +32,19 @@ def highlight_change(val):
 
 @st.cache_data(ttl=300)
 def get_futures_symbols():
+    """Haalt alle beschikbare USDT futures paren op."""
     url = f"{BASE_URL}/api/v1/market/instruments"
     try:
         response = requests.get(url)
         data = response.json()
-        symbols = [item['instId'] for item in data['data'] if item['instType'] == 'SWAP']
+        
+        # AANPASSING: Filter op SWAP EN '-USDT'
+        symbols = [
+            item['instId'] 
+            for item in data['data'] 
+            if item['instType'] == 'SWAP' and item['instId'].endswith('-USDT')
+        ]
+        
         return symbols
     except Exception:
         return []
@@ -69,12 +77,13 @@ def get_candle_stats(symbol, bar_interval):
 
 # --- De App Interface ---
 
-st.title("📊 Blofin Multi-Scanner (Heatmap Stijl)")
+st.title("📊 Blofin USDT Futures Scanner (Heatmap Stijl)")
 st.markdown("---") 
 
 # Instellingen in de zijbalk
 st.sidebar.header("Instellingen")
-limit_coins = st.sidebar.slider("Aantal munten scannen", 10, 50, 20)
+# AANPASSING: Limiet verhoogd naar 150
+limit_coins = st.sidebar.slider("Aantal munten scannen", 10, 150, 50) 
 
 st.sidebar.info(f"Laatste data check: {datetime.now().strftime('%H:%M:%S')} UTC")
 
@@ -86,51 +95,49 @@ if st.sidebar.button("Start Scan", use_container_width=True):
     all_symbols = get_futures_symbols()
     symbols_to_scan = all_symbols[:limit_coins]
     
-    results = []
-    
-    status_text.write("Data ophalen... even geduld.")
-    
-    start_time = time.time()
-    
-    for i, symbol in enumerate(symbols_to_scan):
-        # Ophalen van de lage tijdsframes: 5m, 15m, 1u
-        price, change_5m = get_candle_stats(symbol, "5m")
-        _, change_15m = get_candle_stats(symbol, "15m")
-        _, change_1h = get_candle_stats(symbol, "1H")
+    if not symbols_to_scan:
+        status_text.warning("Geen USDT Futures paren gevonden.")
+        progress_bar.empty()
+    else:
+        results = []
+        status_text.write(f"Data ophalen voor {len(symbols_to_scan)} USDT paren... even geduld.")
+        start_time = time.time()
         
-        results.append({
-            "Munt": symbol,
-            "Prijs ($)": price,
-            "5m %": change_5m,
-            "15m %": change_15m,
-            "1u %": change_1h
-        })
+        for i, symbol in enumerate(symbols_to_scan):
+            price, change_5m = get_candle_stats(symbol, "5m")
+            _, change_15m = get_candle_stats(symbol, "15m")
+            _, change_1h = get_candle_stats(symbol, "1H")
+            
+            results.append({
+                "Munt": symbol,
+                "Prijs ($)": price,
+                "5m %": change_5m,
+                "15m %": change_15m,
+                "1u %": change_1h
+            })
+            
+            progress_bar.progress((i + 1) / len(symbols_to_scan))
+            time.sleep(0.05)
+            
+        end_time = time.time()
         
-        progress_bar.progress((i + 1) / len(symbols_to_scan))
-        time.sleep(0.05)
+        df = pd.DataFrame(results)
+        df = df.sort_values(by="15m %", ascending=False)
         
-    end_time = time.time()
-    
-    df = pd.DataFrame(results)
-    df = df.sort_values(by="15m %", ascending=False)
-    
-    scan_time = round(end_time - start_time, 2)
-    status_text.success(f"Scan voltooid! {limit_coins} munten gecheckt in {scan_time} seconden.")
-    
-    
-    # --- TOEPASSING VAN HEATMAP STIJL EN VOLLEDIGE HOOGTE ---
-    
-    st.dataframe(
-        df.style.applymap(highlight_change, subset=["5m %", "15m %", "1u %"]),
-        use_container_width=True,
-        column_config={
-            "Prijs ($)": st.column_config.NumberColumn(format="$ %.4f"),
-            "5m %": st.column_config.NumberColumn(format="%.2f %%"),
-            "15m %": st.column_config.NumberColumn(format="%.2f %%"),
-            "1u %": st.column_config.NumberColumn(format="%.2f %%"),
-        },
-        hide_index=True
-    )
+        scan_time = round(end_time - start_time, 2)
+        status_text.success(f"Scan voltooid! {len(symbols_to_scan)} munten gecheckt in {scan_time} seconden.")
+        
+        st.dataframe(
+            df.style.applymap(highlight_change, subset=["5m %", "15m %", "1u %"]),
+            use_container_width=True,
+            column_config={
+                "Prijs ($)": st.column_config.NumberColumn(format="$ %.4f"),
+                "5m %": st.column_config.NumberColumn(format="%.2f %%"),
+                "15m %": st.column_config.NumberColumn(format="%.2f %%"),
+                "1u %": st.column_config.NumberColumn(format="%.2f %%"),
+            },
+            hide_index=True
+        )
 
 else:
     status_text.info("Druk op 'Start Scan' om de live data op te halen.")
